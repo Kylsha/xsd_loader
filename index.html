@@ -1,0 +1,189 @@
+<html>
+<head>
+  <meta charset=utf-8>
+  <title>XSD</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <!-- <link rel="shortcut icon" href="http://www.iconj.com/ico/f/x/fxlgnbqmnc.ico" type="image/x-icon" /> -->
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+
+<style>
+    .table_wrapper{
+        top: 15px;
+        left:15px;
+        max-height: 100%;
+        flex: 1;
+        overflow: auto;
+        vertical-align: top; 
+        margin: 0 auto;
+        padding: 10px;
+    }
+    .tbl{ 
+        margin: 50px;
+        padding: 10px;
+        height: 100%;
+        width:  100%;
+    }
+    .rowStyle{
+        width:  100%;
+        table-layout: fixed;
+        height: 30px
+    }
+    .fieldNameStyle{
+        font-family: monospace;
+        padding: 5px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space: nowrap;
+        border: 1px solid black;
+    }
+    .fieldNameStyle-header{
+        font-size: large;
+        font-family: monospace;
+        font-weight: bold;
+        padding: 5px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space: nowrap;
+        border: 1px solid black;
+    }
+    .fieldStyleActive {
+        font-size: large;
+        font-family: monospace;
+        font-weight: bold;
+        padding: 5px;
+        overflow: visible;
+        text-overflow: ellipsis;
+        white-space: unset ;
+        border: 2px solid black;
+    }
+    .buttonSave{
+        color: white;
+        /* text-shadow: 1px 1px white; */
+        font-size: large;
+        font-family: monospace;
+        background: rgb(131,58,180);
+        background: linear-gradient(128deg, rgba(131,58,180,1) 0%, rgba(253,29,29,1) 50%, rgba(252,176,69,1) 100%);
+        border:none;
+        outline: none;
+        border-radius: 15px;
+        position: absolute;
+        width:10%;
+        height: 5%;
+        bottom: 20px;
+        right: 40px;
+    }
+    .buttonSave:hover{
+        background: rgb(131,58,180);
+        background: linear-gradient(128deg, rgba(131,58,180,1) 0%, rgba(253,92,29,1) 50%, rgba(252,176,69,1) 100%);
+    }
+    .buttonSave:active{
+        transform: translateY(3px);
+    }
+
+
+</style>
+</head>
+    <body>
+
+        <div class="table_wrapper" >
+            <table 
+                id="tbl"style="width: 100%; height: 95%; table-layout: fixed" >
+            </table>
+          </div>
+        <button id="saveBtn" class="buttonSave" onclick="saveData()">Сохранить json</button>
+
+    </body>
+    <script>
+
+        let req = new XMLHttpRequest();
+        let data_json = new Array(0)
+        var tbl = document.getElementById('tbl');
+        var spravochnik_data = {
+            "any":"Любые значения",
+            "strict":"Значения из справочника",
+            "multiple":"Несколько значений из справочника"
+        }
+        
+        
+        req.onreadystatechange = () => {
+        if (req.readyState == XMLHttpRequest.DONE) {
+            var raw_json = req.responseText
+            data_json = JSON.parse(raw_json)
+            populateTable(data_json)
+        }
+        };
+    
+
+        req.open("GET", "https://api.jsonbin.io/b/5f685555302a837e956a8ef5/latest", true);
+        req.setRequestHeader("secret-key", "$2b$10$7ItEX3y0dYm2HqcAaGwW5eQRYV0isUJHjnSrm1WihwLwHbuXxUwKq");
+        req.send();
+
+        function makeCellEditable(element) {
+            element.contentEditable = true;
+            element.className = "fieldStyleActive"
+            element.focus()
+        }
+        function returnCellOrigin(element){
+            element.contentEditable = false;
+            element.className = "fieldNameStyle"
+        }
+
+        function populateTable(attributes){
+            // tbl.innerHTML = ""
+            var tr = tbl.insertRow();
+            tr.className = "rowStyle"
+
+            var headers_data = ["Слой", "Поле", "Тип поля", "Данные"]
+            for (var i = 0; i < headers_data.length; i++) {
+                var header_one = tr.insertCell();
+                header_one.appendChild(document.createTextNode(headers_data[i]));
+                header_one.className = 'fieldNameStyle-header'
+            }
+            for (const [ key, value ] of Object.entries(attributes)) {
+                for (const [ field, data ] of Object.entries(value)){
+                    var tr = tbl.insertRow();
+                    tr.className = "rowStyle"
+
+                    var table_data = [key, field, data['type'], spravochnik_data[data['category']]]
+                    for (var i = 0; i < table_data.length; i++) {
+                        var td_one = tr.insertCell();
+                        td_one.appendChild(document.createTextNode(table_data[i]));
+                        td_one.className = 'fieldNameStyle'
+                        td_one.setAttribute('ondblclick', "makeCellEditable(this)")
+                        td_one.setAttribute('onblur', "returnCellOrigin(this)")
+                    }
+                }
+            }
+        }
+        function saveData(){
+            var out_json = {}
+            var data = document.getElementsByClassName("rowStyle")
+            for (let item of data) {
+                var data_r = item.getElementsByClassName("fieldNameStyle")
+                if(data_r.length > 0){
+                    var layer = data_r[0].innerHTML
+                    var field = data_r[1].innerHTML
+                    var type = data_r[2].innerHTML
+                    var data_field = data_r[3].innerHTML
+                    if (layer in out_json){
+                        out_json[layer][field] = {"type": type, "category": data_field}
+                    }else{
+                        out_json[layer] = {field:{"type": type, "category": data_field}}
+                    }
+
+                }
+            }
+            console.log(out_json)
+            // localStorage.setItem('gameStorage', JSON.stringify(out_json));
+            // $.twFile.save('ddd', out_json)
+            var blob = new Blob([JSON.stringify(out_json, null, 4)], {type: "text/plain;charset=utf-8"});
+            saveAs(blob, "xsd.json");
+        }
+
+    </script>
+    
+</html>
